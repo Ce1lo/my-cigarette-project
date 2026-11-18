@@ -323,7 +323,24 @@ export function createCigarette() {
   glow.name = 'EmberGlow';
   group.add(glow);
 
-  const state = { glow: 1, t: Math.random() * 100 };
+  const state = { glow: 1, heat: 1, t: 0 };
+  group.userData.burnProgress = 0;
+  group.userData.burnedLength = 0;
+  group.setBurnProgress = (value) => {
+    if (!Number.isFinite(value)) return;
+    const progress = clamp(value, 0, 1);
+    const burned = progress * (C.rodEnd - 0.5);
+    const remaining = paperLen - burned;
+    paper.scale.y = remaining / paperLen;
+    paper.position.y = paperTop - remaining / 2;
+    filter.position.y = filterTop + burned - C.filterLength / 2;
+    band.position.y = filterTop + burned - 0.125;
+    group.userData.burnProgress = progress;
+    group.userData.burnedLength = burned;
+  };
+  group.setBurnHeat = (value) => {
+    if (Number.isFinite(value)) state.heat = clamp(value, 0, 1);
+  };
   const warm = new THREE.Color(1.0, 0.35, 0.05);
   const hot = new THREE.Color(1.0, 0.65, 0.2);
   const tmp = new THREE.Color();
@@ -333,13 +350,14 @@ export function createCigarette() {
   };
 
   group.update = (dt = 1 / 60) => {
-    state.t += dt;
+    if (!Number.isFinite(dt) || dt < 0) return;
+    state.t += Math.min(dt, 0.1);
     const t = state.t;
 
     const slow = fbm3(t * 1.2, 0.5, 0, 2);
     const fast = noise3(t * 8.0, 3.3, 0);
     const f = 0.65 + 0.4 * slow + 0.15 * (fast - 0.5) + 0.1 * Math.sin(t * 2.0);
-    const k = state.glow * f;
+    const k = state.glow * state.heat * f;
 
     tmp.copy(warm).lerp(hot, clamp((f - 0.6) / 0.6, 0, 1));
     emberMat.emissive.copy(tmp);

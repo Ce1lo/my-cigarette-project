@@ -13,6 +13,7 @@ export class SmokeSystem {
     this.time = 0;
     this.density = 0;
     this.windStrength = 0;
+    this.emissionEnabled = true;
     this.positions = new Float32Array(MAX_PARTICLES * 3);
     this.velocities = new Float32Array(MAX_PARTICLES * 3);
     this.seeds = Float32Array.from({ length: MAX_PARTICLES }, () =>
@@ -160,6 +161,10 @@ export class SmokeSystem {
     const epsilon = 0.08;
     for (let i = 0; i < this.density; i++) {
       const previousAge = this.ages[i];
+      if (!this.emissionEnabled && previousAge <= 0) {
+        this.opacities[i] = 0;
+        continue;
+      }
       this.ages[i] += dt;
       if (this.ages[i] < 0) continue;
       if (previousAge < 0) {
@@ -219,6 +224,17 @@ export class SmokeSystem {
       this.opacities[i] =
         0.09 * Math.min(this.ages[i] / 0.15, 1) * (1 - progress) ** 1.4;
     }
+    this.geometry.attributes.position.needsUpdate = true;
+    this.geometry.attributes.particleSize.needsUpdate = true;
+    this.geometry.attributes.particleOpacity.needsUpdate = true;
+  }
+
+  setEmissionEnabled(value) {
+    if (typeof value === "boolean") this.emissionEnabled = value;
+  }
+
+  reset() {
+    for (let i = 0; i < this.density; i++) this.resetParticle(i, this.random() * 6);
     this.geometry.attributes.position.needsUpdate = true;
     this.geometry.attributes.particleSize.needsUpdate = true;
     this.geometry.attributes.particleOpacity.needsUpdate = true;
